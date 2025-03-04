@@ -166,5 +166,15 @@ async def summarize(ctx, *, message: str):
 
     summary = response.text if response.text else "Sorry, I couldn't generate a summary."
     await ctx.send(f"📜 **Summary:** {summary}")
+@bot.event
+async def on_member_join(member):
+    print(f"DEBUG: {member.name} joined!")  # Debugging
 
+    # Get or create a welcome channel
+    channel = discord.utils.get(member.guild.text_channels, name="welcome")
+    if not channel:
+        print("DEBUG: No welcome channel found.")
+        return
+
+    await channel.send(f"🎉 Welcome {member.mention} to {member.guild.name}! Enjoy your stay!")
 bot.run(TOKEN)
