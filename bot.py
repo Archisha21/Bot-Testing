@@ -5,7 +5,7 @@ import asyncio
 import pytz
 from discord.ext import commands
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timezone
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -20,6 +20,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 reminder_data = {}
 reminder_id = 1
+polls = {}
 
 @bot.event
 async def on_ready():
@@ -106,5 +107,49 @@ async def modify_reminder(ctx, rid: int, new_date: str, new_time: str, *, new_me
 
     reminder_data[rid] = {"user": ctx.author.id, "time": new_reminder_time, "message": new_message}
     await ctx.send(f"✅ Reminder {rid} updated to {new_reminder_time.strftime('%Y-%m-%d %H:%M:%S %Z')}!")
+
+@bot.command()
+async def poll(ctx, question: str, *options):
+    if len(options) < 2 or len(options) > 10:
+        await ctx.send("❌ You need between 2 and 10 options for a poll.")
+        return
+
+    reactions = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    embed = discord.Embed(title="📊 Poll", description=question, color=discord.Color.blue())
+
+    poll_message = ""
+    for i, option in enumerate(options):
+        poll_message += f"{reactions[i]} {option}\n"
+
+    embed.add_field(name="Options:", value=poll_message, inline=False)
+    poll_msg = await ctx.send(embed=embed)
+
+    for i in range(len(options)):
+        await poll_msg.add_reaction(reactions[i])
+
+    polls[poll_msg.id] = {"question": question, "options": options, "author": ctx.author.id}
+
+@bot.command()
+async def close_poll(ctx, message_id: int):
+    if message_id not in polls:
+        await ctx.send("❌ Poll not found.")
+        return
+
+    poll = polls[message_id]
+    poll_message = await ctx.channel.fetch_message(message_id)
+    
+    results = {}
+    for reaction in poll_message.reactions:
+        if reaction.emoji in ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]:
+            results[reaction.emoji] = reaction.count - 1
+
+    result_text = "**📊 Poll Results:**\n"
+    for i, option in enumerate(poll["options"]):
+        result_text += f"{option}: {results.get(['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'][i], 0)} votes\n"
+
+    embed = discord.Embed(title="📊 Poll Closed", description=result_text, color=discord.Color.red())
+    await ctx.send(embed=embed)
+
+    del polls[message_id]
 
 bot.run(TOKEN)
