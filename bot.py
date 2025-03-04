@@ -2,10 +2,8 @@ import discord
 import os
 import google.generativeai as genai
 import datetime
-import pytz
 import asyncio
-import dateparser
-import re
+import pytz
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -14,6 +12,9 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
+
+# Detect user's timezone automatically
+LOCAL_TIMEZONE = pytz.timezone("Asia/Kolkata")  # Change this to your timezone if needed
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -26,49 +27,37 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
 @bot.command()
-async def chat(ctx, *, message):
-    await ctx.send("🤖 Thinking...")
-    model = genai.GenerativeModel("models/gemini-1.5-flash-latest")
-    response = model.generate_content(message)
-    await ctx.send(response.text if response.text else "Sorry, I couldn't generate a response.")
+async def remind(ctx, date: str, time: str, *, reminder_text: str):
+    """Set a reminder using specific date/time format: DD-MM-YYYY HH:MM Reminder Text (Your Local Time)"""
+    try:
+        # Convert input to local timezone
+        reminder_time = datetime.datetime.strptime(f"{date} {time}", "%d-%m-%Y %H:%M")
+        reminder_time = LOCAL_TIMEZONE.localize(reminder_time)  
+
+        now = datetime.datetime.now(LOCAL_TIMEZONE)
+
+        if reminder_time < now:
+            await ctx.send("❌ The time is in the past! Try a future time.")
+            return
+
+        delay = (reminder_time - now).total_seconds()
+
+        await ctx.send(f"✅ Reminder set for {reminder_time.strftime('%Y-%m-%d %H:%M:%S %Z')}!")
+
+        await asyncio.sleep(delay)
+        await ctx.send(f"🔔 **Reminder:** {ctx.author.mention} {reminder_text}")
+
+    except ValueError:
+        await ctx.send("❌ Invalid format! Use: `!remind DD-MM-YYYY HH:MM Your reminder text`")
 
 @bot.command()
-async def remind(ctx, *, message):
-    now = datetime.datetime.now(pytz.timezone("Asia/Kolkata"))  # Localized to IST
-    reminder_time = parse_reminder_time(message, now)
+async def chat(ctx, *, message):
+    """Handles user messages and replies using Gemini AI."""
+    await ctx.send("🤖 Thinking...")
 
-    if not reminder_time:
-        await ctx.send("❌ I couldn't understand the date/time. Try: `Remind me to submit my assignment tomorrow at 6 PM`")
-        return
+    model = genai.GenerativeModel("models/gemini-1.5-flash-latest")
+    response = model.generate_content(message)
 
-    if reminder_time.tzinfo is None:
-        reminder_time = pytz.timezone("Asia/Kolkata").localize(reminder_time)
-
-    delay = (reminder_time - now).total_seconds()
-    if delay <= 0:
-        await ctx.send("❌ The time must be in the future!")
-        return
-
-    await ctx.send(f"✅ Reminder set for {reminder_time}!")
-    await asyncio.sleep(delay)
-    await ctx.send(f"⏰ {ctx.author.mention} Reminder: {message}")
-
-def parse_reminder_time(message, now):
-    settings = {
-        'TIMEZONE': 'Asia/Kolkata',
-        'RETURN_AS_TIMEZONE_AWARE': True,
-        'PREFER_DATES_FROM': 'future'
-    }
-    
-    parsed_time = dateparser.parse(message, settings=settings)
-
-    if not parsed_time:
-        match = re.search(r"(\d{1,2}:\d{2}\s*(AM|PM)?)", message, re.IGNORECASE)
-        if match:
-            time_str = match.group(1)
-            if "today" in message.lower():
-                parsed_time = dateparser.parse(f"{now.strftime('%Y-%m-%d')} {time_str}", settings=settings)
-
-    return parsed_time
+    await ctx.send(response.text if response.text else "Sorry, I couldn't generate a response.")
 
 bot.run(TOKEN)
