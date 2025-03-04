@@ -151,5 +151,20 @@ async def close_poll(ctx, message_id: int):
     await ctx.send(embed=embed)
 
     del polls[message_id]
+@bot.command()
+async def summarize(ctx, *, message: str):
+    """Summarizes a long message using AI."""
+    if len(message) < 50:
+        await ctx.send("📢 Message is too short to summarize.")
+        return
+
+    await ctx.send("🤖 Summarizing...")
+
+    model = genai.GenerativeModel("models/gemini-1.5-flash-latest")
+    prompt = f"Summarize the following text concisely:\n\n{message}"
+    response = model.generate_content(prompt)
+
+    summary = response.text if response.text else "Sorry, I couldn't generate a summary."
+    await ctx.send(f"📜 **Summary:** {summary}")
 
 bot.run(TOKEN)
