@@ -211,5 +211,30 @@ async def on_member_join(member):
     channel = discord.utils.get(member.guild.text_channels, name="welcome")
     if channel:
         await channel.send(f"🎉 Welcome {member.mention} to {member.guild.name}! Enjoy your stay!")
+@bot.command()
+async def user_info(ctx, member: discord.Member = None):
+    """Displays user information. If no member is mentioned, shows info of the message author."""
+    
+    member = member or ctx.author  # If no member is mentioned, use the command caller
+    roles = [role.name for role in member.roles if role.name != "@everyone"]  # Exclude @everyone role
+    joined_at = member.joined_at.strftime("%Y-%m-%d %H:%M:%S")
+    created_at = member.created_at.strftime("%Y-%m-%d %H:%M:%S")
+
+    embed = discord.Embed(title=f"User Info - {member.name}", color=discord.Color.blue())
+
+    # Check if the user has an avatar
+    if member.avatar:
+        embed.set_thumbnail(url=member.avatar.url)
+
+    embed.add_field(name="Username", value=member.name, inline=True)
+    embed.add_field(name="User ID", value=member.id, inline=True)
+    embed.add_field(name="Nickname", value=member.nick or "None", inline=True)
+    embed.add_field(name="Joined Server", value=joined_at, inline=True)
+    embed.add_field(name="Account Created", value=created_at, inline=True)
+    embed.add_field(name="Roles", value=", ".join(roles) if roles else "None", inline=False)
+    embed.set_footer(text=f"Requested by {ctx.author.name}")
+
+    await ctx.send(embed=embed)
+
 
 bot.run(TOKEN)
