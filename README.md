@@ -13,6 +13,8 @@ This is a multi-purpose Discord bot built using Python and the discord.py librar
 
 6.Music player with queue system
 
+7. Displaying user info, such as username,user id, date of joining, profile picture
+
 *Features
 
 1.Music Player
@@ -54,6 +56,13 @@ Expired reminders are automatically deleted.
 6.Welcome Messages
 
 Automatically welcomes new members in the #welcome channel.
+
+7.Displaying User Info
+
+!user_info- displays bot user's own info
+
+!user_info @<username> - displays given username's user info; the username should belong to a user in the chat
+
 
 
 *** Features that Worked Well***
